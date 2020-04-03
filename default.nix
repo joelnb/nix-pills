@@ -60,24 +60,36 @@ in pkgs.stdenv.mkDerivation {
   name = "nix-pills";
 
   src = sources;
-  buildInputs = with pkgs; [ jing libxslt ];
+  buildInputs = with pkgs; [ jing libxslt zip ];
 
   installPhase = ''
     jing ${pkgs.docbook5}/xml/rng/docbook/docbook.rng $combined
 
     # Generate the HTML manual.
-    dst=$out/share/doc/nix-pills
-    mkdir -p $dst
+    dst=$out/share/doc/nix-pills/
+
+    dst_xhtml=$dst/xhtml
+    mkdir -p $dst_xhtml
     xsltproc \
       ${manualXsltprocOptions} \
-      --nonet --output $dst/ \
+      --nonet --output $dst_xhtml/ \
       ${pkgs.docbook5_xsl}/xml/xsl/docbook/xhtml/chunk.xsl \
       ${combined}
 
-    mkdir -p $dst/images
-    cp -r ${pkgs.docbook5_xsl}/xml/xsl/docbook/images/callouts $dst/images/callouts
+    mkdir -p $dst_xhtml/images
+    cp -r ${pkgs.docbook5_xsl}/xml/xsl/docbook/images/callouts $dst_xhtml/images/callouts
 
-    cp ${./style.css} $dst/style.css
+    cp ${./style.css} $dst_xhtml/style.css
+
+    dst_epub=$dst/epub
+    mkdir -p $dst_epub
+    xsltproc \
+      ${manualXsltprocOptions} \
+      --nonet --output $dst_epub/ \
+      ${pkgs.docbook5_xsl}/xml/xsl/docbook/epub3/chunk.xsl \
+      ${combined}
+
+    (cd $dst_epub && zip -r -X nix-pills.epub mimetype META-INF OEBPS)
 
     mkdir -p $out/nix-support
     echo "nix-build out $out" >> $out/nix-support/hydra-build-products
